@@ -1,0 +1,2261 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Business Intelligence Dashboard</title>
+
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+:root {
+    --bg: #0b1120;
+    --sidebar: #111a2e;
+    --card: #151f33;
+    --card2: #1b2940;
+    --text: #e8eef8;
+    --muted: #91a1b9;
+    --primary: #4f8cff;
+    --green: #20c997;
+    --red: #ff6b6b;
+    --border: #293750;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 245px;
+    background: var(--sidebar);
+    padding: 24px 15px;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+}
+
+.brand {
+    font-size: 19px;
+    font-weight: bold;
+    margin-bottom: 35px;
+    padding-left: 10px;
+}
+
+.brand span { color: var(--primary); }
+
+.nav-btn {
+    width: 100%;
+    padding: 13px;
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    border-radius: 8px;
+    text-align: left;
+    cursor: pointer;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.nav-btn:hover,
+.nav-btn.active {
+    background: #243653;
+    color: white;
+}
+
+.main {
+    margin-left: 245px;
+    width: calc(100% - 245px);
+    padding: 28px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 25px;
+}
+
+h1 { font-size: 25px; margin: 0; }
+.subtitle { color: var(--muted); margin-top: 7px; font-size: 13px; }
+
+.status {
+    background: #183d37;
+    color: var(--green);
+    padding: 8px 13px;
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+.filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(150px,1fr));
+    gap: 12px;
+    background: var(--card);
+    padding: 17px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 22px;
+}
+
+.filter label {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 7px;
+}
+
+select, input, button {
+    font-family: inherit;
+}
+
+.filter select,
+.filter input {
+    width: 100%;
+    padding: 10px;
+    background: var(--card2);
+    color: white;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+}
+
+.kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(175px,1fr));
+    gap: 15px;
+    margin-bottom: 22px;
+}
+
+.kpi {
+    background: var(--card);
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.kpi-label {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.kpi-value {
+    font-size: 25px;
+    font-weight: bold;
+    margin: 13px 0 5px;
+}
+
+.kpi-note {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 17px;
+}
+
+.panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 17px;
+    min-width: 0;
+}
+
+.panel h3 {
+    font-size: 15px;
+    margin: 0 0 15px;
+}
+
+.chart {
+    width: 100%;
+    min-height: 310px;
+}
+
+.page { display: none; }
+.page.active { display: block; }
+
+.page-title {
+    margin-bottom: 20px;
+}
+
+.page-title p {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+th, td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+}
+
+th { color: var(--muted); }
+
+td { color: var(--text); }
+
+.table-wrap { overflow-x: auto; }
+
+.action-btn {
+    padding: 7px 10px;
+    border: none;
+    border-radius: 6px;
+    background: var(--primary);
+    color: white;
+    cursor: pointer;
+}
+
+.badge {
+    padding: 5px 8px;
+    border-radius: 5px;
+    font-size: 11px;
+}
+
+.Pending { background: #45351c; color: #ffc857; }
+.In-Progress { background: #1c3657; color: #75b5ff; }
+.Completed { background: #183d37; color: #20c997; }
+.On-Hold { background: #472b34; color: #ff8a9b; }
+
+.recommendation {
+    background: var(--card2);
+    padding: 15px;
+    border-left: 3px solid var(--primary);
+    border-radius: 7px;
+    margin-bottom: 12px;
+}
+
+.recommendation strong {
+    display: block;
+    margin-bottom: 7px;
+}
+
+.recommendation p {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 35px;
+}
+
+.upload-area {
+    background: var(--card2);
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.upload-area input { color: white; }
+
+.small {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+select.status-select {
+    background: var(--card2);
+    color: white;
+    border: 1px solid var(--border);
+    padding: 7px;
+    border-radius: 6px;
+}
+
+@media(max-width:850px) {
+    .sidebar {
+        width: 100%;
+        position: relative;
+        bottom: auto;
+        padding: 12px;
+    }
+
+    .layout { display: block; }
+
+    .brand { margin-bottom: 10px; }
+
+    .nav-btn {
+        width: auto;
+        display: inline-block;
+        padding: 9px;
+    }
+
+    .main {
+        margin-left: 0;
+        width: 100%;
+        padding: 16px;
+    }
+
+    .grid { grid-template-columns: 1fr; }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="layout">
+
+<aside class="sidebar">
+    <div class="brand">BI <span>Dashboard</span></div>
+
+    <button class="nav-btn active" onclick="showPage('overview',this)">Executive Overview</button>
+    <button class="nav-btn" onclick="showPage('revenue',this)">Revenue Analysis</button>
+    <button class="nav-btn" onclick="showPage('marketing',this)">Marketing Performance</button>
+    <button class="nav-btn" onclick="showPage('customer',this)">Customer Analysis</button>
+    <button class="nav-btn" onclick="showPage('service',this)">Service & Region</button>
+    <button class="nav-btn" onclick="showPage('recommendations',this)">Recommendations</button>
+    <button class="nav-btn" onclick="showPage('tracking',this)">Action Tracking</button>
+    <button class="nav-btn" onclick="showPage('quality',this)">Data Quality</button>
+</aside>
+
+<main class="main">
+
+<div class="header">
+    <div>
+        <h1 id="pageHeading">Executive Overview</h1>
+        <div class="subtitle">Business Intelligence & Rule-Based Recommendation Engine</div>
+    </div>
+    <div class="status" id="dataStatus">Loading Data...</div>
+</div>
+
+<details class="upload-area">
+    <summary>Upload Another Dataset (Optional)</summary>
+
+    <p class="small">
+        The default dataset is loaded automatically.
+        You can upload another CSV file if needed.
+    </p>
+
+    <input type="file" id="fileInput" accept=".csv">
+</details>
+
+<div class="filters">
+    <div class="filter">
+        <label>Start Date</label>
+        <input type="date" id="startDate">
+    </div>
+
+    <div class="filter">
+        <label>End Date</label>
+        <input type="date" id="endDate">
+    </div>
+
+    <div class="filter">
+        <label>Region</label>
+        <select id="region"><option value="">All Regions</option></select>
+    </div>
+
+    <div class="filter">
+        <label>Channel</label>
+        <select id="channel"><option value="">All Channels</option></select>
+    </div>
+
+    <div class="filter">
+        <label>Service Type</label>
+        <select id="service"><option value="">All Services</option></select>
+    </div>
+
+    <div class="filter">
+        <label>Customer Type</label>
+        <select id="customerType"><option value="">All Customers</option></select>
+    </div>
+</div>
+
+<!-- OVERVIEW -->
+
+<section class="page active" id="overview">
+
+<div class="kpis" id="kpiContainer"></div>
+
+<div class="grid">
+    <div class="panel">
+        <h3>Monthly Revenue Trend</h3>
+        <div id="overviewRevenue" class="chart"></div>
+    </div>
+
+    <div class="panel">
+        <h3>Revenue by Channel</h3>
+        <div id="overviewChannel" class="chart"></div>
+    </div>
+
+    <div class="panel">
+        <h3>Revenue by Service Type</h3>
+        <div id="overviewService" class="chart"></div>
+    </div>
+
+    <div class="panel">
+        <h3>Customer Revenue Contribution</h3>
+        <div id="overviewCustomer" class="chart"></div>
+    </div>
+</div>
+
+</section>
+
+<!-- REVENUE -->
+
+<section class="page" id="revenue">
+
+<div class="page-title">
+    <h2>Revenue Analysis</h2>
+    <p>Analyze revenue trends, transactions and monthly performance.</p>
+</div>
+
+<div class="kpis" id="revenueKPIs"></div>
+
+<div class="grid">
+    <div class="panel">
+        <h3>Monthly Revenue</h3>
+        <div id="monthlyRevenue" class="chart"></div>
+    </div>
+
+    <div class="panel">
+        <h3>Revenue by Region</h3>
+        <div id="regionRevenue" class="chart"></div>
+    </div>
+
+    <div class="panel">
+        <h3>Revenue by Customer Type</h3>
+        <div id="customerRevenue" class="chart"></div>
+    </div>
+
+    <div class="panel">
+        <h3>Revenue by Service</h3>
+        <div id="serviceRevenue" class="chart"></div>
+    </div>
+</div>
+
+</section>
+
+<!-- MARKETING -->
+
+<section class="page" id="marketing">
+
+<div class="page-title">
+    <h2>Marketing Performance</h2>
+    <p>Evaluate marketing channels and advertising efficiency.</p>
+</div>
+
+<div class="kpis" id="marketingKPIs"></div>
+
+<div class="grid">
+    <div class="panel">
+        <h3>ROAS by Channel</h3>
+        <div id="channelROAS" class="chart"></div>
+    </div>
+
+    <div class="panel">
+        <h3>Ad Spend by Channel</h3>
+        <div id="channelSpend" class="chart"></div>
+    </div>
+
+    <div class="panel">
+        <h3>Conversions by Channel</h3>
+        <div id="channelConversions" class="chart"></div>
+    </div>
+
+    <div class="panel">
+        <h3>Revenue vs Ad Spend</h3>
+        <div id="revenueSpend" class="chart"></div>
+    </div>
+</div>
+
+</section>
+
+<!-- CUSTOMER -->
+
+<section class="page" id="customer">
+
+<div class="page-title">
+    <h2>Customer Analysis</h2>
+    <p>Understand new and returning customer contribution.</p>
+</div>
+
+<div class="grid">
+    <div class="panel">
+        <h3>Revenue Contribution</h3>
+        <div id="customerContribution" class="chart"></div>
+    </div>
+
+    <div class="panel">
+        <h3>Conversions by Customer Type</h3>
+        <div id="customerConversions" class="chart"></div>
+    </div>
+</div>
+
+<div class="panel">
+    <h3>Customer Performance</h3>
+    <div id="customerTable" class="table-wrap"></div>
+</div>
+
+</section>
+
+<!-- SERVICE -->
+
+<section class="page" id="service">
+
+<div class="page-title">
+    <h2>Service & Regional Analysis</h2>
+    <p>Compare service categories and geographical performance.</p>
+</div>
+
+<div class="grid">
+    <div class="panel">
+        <h3>Revenue by Service</h3>
+        <div id="servicePerformance" class="chart"></div>
+    </div>
+
+    <div class="panel">
+        <h3>Revenue by Region</h3>
+        <div id="regionalPerformance" class="chart"></div>
+    </div>
+
+    <div class="panel">
+        <h3>Service Revenue Contribution</h3>
+        <div id="serviceContribution" class="chart"></div>
+    </div>
+
+    <div class="panel">
+        <h3>Service vs Channel</h3>
+        <div id="serviceChannel" class="chart"></div>
+    </div>
+</div>
+
+</section>
+
+<!-- RECOMMENDATIONS -->
+
+<section class="page" id="recommendations">
+
+<div class="page-title">
+    <h2>Business Recommendations</h2>
+    <p>Rule-based recommendations generated from the filtered dataset.</p>
+</div>
+
+<div class="panel">
+    <div id="recommendationList"></div>
+</div>
+
+</section>
+
+<!-- TRACKING -->
+
+<section class="page" id="tracking">
+
+<div class="page-title">
+    <h2>Action Tracking</h2>
+    <p>Monitor implementation progress of business recommendations.</p>
+</div>
+
+<div class="panel">
+    <button class="action-btn" onclick="exportActions()">Export Action Tracking CSV</button>
+    <div class="small" style="margin-top:10px">
+        Changes are saved locally in this browser only.
+    </div>
+</div>
+
+<div class="panel">
+    <div class="table-wrap" id="actionTable"></div>
+</div>
+
+</section>
+
+<!-- QUALITY -->
+
+<section class="page" id="quality">
+
+<div class="page-title">
+    <h2>Data Quality</h2>
+    <p>Dataset completeness and validation checks.</p>
+</div>
+
+<div class="kpis" id="qualityKPIs"></div>
+
+<div class="panel">
+    <h3>Data Quality Details</h3>
+    <div id="qualityTable"></div>
+</div>
+
+</section>
+
+</main>
+</div>
+
+<script>
+    
+// ========================================
+// BUSINESS INTELLIGENCE DASHBOARD
+// ========================================
+
+// GLOBAL VARIABLES
+
+let rawData = [];
+let filteredData = [];
+let qualityData = [];
+
+let actions = [];
+
+try {
+    actions = JSON.parse(localStorage.getItem("bi_actions") || "[]");
+    if (!Array.isArray(actions)) actions = [];
+} catch {
+    actions = [];
+}
+
+// ========================================
+// HELPER FUNCTIONS
+// ========================================
+
+const money = n => Number(n || 0).toLocaleString("en-US", {
+    maximumFractionDigits: 2
+});
+
+const sum = (data, key) =>
+    data.reduce((total, row) => total + (Number(row[key]) || 0), 0);
+
+const unique = (data, key) =>
+    [...new Set(data.map(row => row[key]).filter(v => v !== "" && v != null))].sort();
+
+const groupSum = (data, groupKey, valueKey) => {
+    const result = {};
+
+    data.forEach(row => {
+        const key = row[groupKey] || "Unknown";
+        result[key] = (result[key] || 0) + (Number(row[valueKey]) || 0);
+    });
+
+    return result;
+};
+
+const groupRows = (data, groupKey) => {
+    const result = {};
+
+    data.forEach(row => {
+        const key = row[groupKey] || "Unknown";
+
+        if (!result[key]) result[key] = [];
+
+        result[key].push(row);
+    });
+
+    return result;
+};
+
+const avg = (data, key) =>
+    data.length ? sum(data, key) / data.length : 0;
+
+const pct = (a, b) =>
+    b ? ((a - b) / Math.abs(b)) * 100 : 0;
+
+const roas = data => {
+    const spend = sum(data, "Ad Spend");
+    return spend ? sum(data, "Revenue") / spend : 0;
+};
+
+function formatPercent(n) {
+    return Number(n || 0).toFixed(1) + "%";
+}
+
+function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[char]);
+}
+
+function setStatus(message) {
+    const status = document.getElementById("dataStatus");
+    if (status) status.textContent = message;
+}
+
+// ========================================
+// DATE HANDLING
+// ========================================
+
+function parseDate(value) {
+
+    if (!value) return null;
+
+    const text = String(value).trim();
+
+    // ISO format: YYYY-MM-DD
+    const iso = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+
+    if (iso) {
+        const [, y, m, d] = iso;
+        const date = new Date(Number(y), Number(m) - 1, Number(d));
+
+        return isNaN(date.getTime()) ? null : date;
+    }
+
+    // DD/MM/YYYY or DD-MM-YYYY
+    const parts = text.split(/[/-]/);
+
+    if (parts.length === 3) {
+
+        const [a, b, c] = parts.map(Number);
+
+        if ([a, b, c].every(Number.isFinite)) {
+
+            let year, month, day;
+
+            if (a > 999) {
+                year = a;
+                month = b;
+                day = c;
+            } else {
+                day = a;
+                month = b;
+                year = c;
+
+                if (year < 100) {
+                    year += year < 50 ? 2000 : 1900;
+                }
+            }
+
+            const date = new Date(year, month - 1, day);
+
+            if (
+                date.getFullYear() !== year ||
+                date.getMonth() !== month - 1 ||
+                date.getDate() !== day
+            ) {
+                return null;
+            }
+
+            return date;
+        }
+    }
+
+    // Fallback for other supported date formats
+    const fallback = new Date(text);
+
+    return isNaN(fallback.getTime()) ? null : fallback;
+}
+
+function formatDateInput(date) {
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
+
+
+//----------------------------------
+// ========================================
+// OPTIONAL CSV UPLOAD
+// ========================================
+
+const fileInput = document.getElementById("fileInput");
+
+if (fileInput) {
+
+    fileInput.addEventListener("change", function(e) {
+
+        const file = e.target.files[0];
+
+        if (!file) return;
+
+        setStatus("Loading Uploaded Dataset...");
+
+        Papa.parse(file, {
+
+            header: true,
+            skipEmptyLines: true,
+
+            complete: function(result) {
+
+                if (!result.data.length) {
+                    setStatus("Uploaded Dataset Is Empty");
+                    return;
+                }
+
+                qualityData = result.data.map(row => {
+
+                    const clean = {};
+
+                    Object.keys(row).forEach(key => {
+                        clean[key.trim()] = row[key];
+                    });
+
+                    return clean;
+                });
+
+                rawData = result.data
+                    .map(normalizeRow)
+                    .filter(row =>
+                        row.Date && !isNaN(row.Date.getTime())
+                    );
+
+                if (!rawData.length) {
+                    setStatus("Invalid Uploaded Dataset");
+                    return;
+                }
+
+                initializeDashboard();
+
+                setStatus(
+                    rawData.length.toLocaleString() +
+                    " Records Loaded (Uploaded)"
+                );
+
+                fileInput.value = "";
+            },
+
+            error: function(error) {
+
+                console.error(error);
+
+                setStatus("CSV Upload Error");
+            }
+        });
+    });
+}
+//-------------------------------------
+
+
+
+// ========================================
+// DATA NORMALIZATION
+// ========================================
+
+function normalizeRow(row) {
+
+    const result = {};
+
+    Object.keys(row).forEach(key => {
+        result[key.trim()] = typeof row[key] === "string"
+            ? row[key].trim()
+            : row[key];
+    });
+
+    ["Revenue", "Ad Spend", "Conversions"].forEach(key => {
+
+        const value = String(result[key] ?? "")
+            .replace(/,/g, "")
+            .trim();
+
+        result[key] = value === "" ? 0 : Number(value);
+
+        if (!Number.isFinite(result[key])) {
+            result[key] = 0;
+        }
+    });
+
+    result.Date = parseDate(result.Date);
+
+    return result;
+}
+
+// ========================================
+// AUTOMATIC DATA LOADING
+// ========================================
+
+async function loadDefaultDataset() {
+
+    setStatus("Loading Dataset...");
+
+    try {
+
+        const response = await fetch("./Data/dataset.csv");
+
+        if (!response.ok) {
+            throw new Error(`HTTP Error: ${response.status}`);
+        }
+
+        const csv = await response.text();
+
+        Papa.parse(csv, {
+
+            header: true,
+            skipEmptyLines: true,
+
+            complete: function(result) {
+
+                if (!result.data.length) {
+                    setStatus("Dataset Is Empty");
+                    return;
+                }
+
+                // Keep original CSV values for Data Quality
+                qualityData = result.data.map(row => {
+                    const clean = {};
+
+                    Object.keys(row).forEach(key => {
+                        clean[key.trim()] = row[key];
+                    });
+
+                    return clean;
+                });
+
+                // Normalize data for dashboard calculations
+                rawData = result.data
+                    .map(normalizeRow)
+                    .filter(row => row.Date && !isNaN(row.Date.getTime()));
+
+                if (!rawData.length) {
+                    setStatus("Invalid Dataset - Check Date Column");
+                    return;
+                }
+
+                initializeDashboard();
+            },
+
+            error: function(error) {
+                console.error("CSV Parsing Error:", error);
+                setStatus("CSV Parsing Error");
+            }
+        });
+
+    } catch (error) {
+
+        console.error("Dataset Loading Error:", error);
+
+        setStatus("Dataset Not Found - Check Data/dataset.csv");
+    }
+}
+
+// Start automatically
+loadDefaultDataset();
+
+// ========================================
+// INITIALIZATION
+// ========================================
+
+function initializeDashboard() {
+
+    if (!rawData.length) return;
+
+    setStatus(
+        rawData.length.toLocaleString() + " Records Loaded"
+    );
+
+    populateFilters();
+
+    const dates = rawData.map(row => row.Date.getTime());
+
+    const minDate = new Date(Math.min(...dates));
+    const maxDate = new Date(Math.max(...dates));
+
+    document.getElementById("startDate").value =
+        formatDateInput(minDate);
+
+    document.getElementById("endDate").value =
+        formatDateInput(maxDate);
+
+    // Attach filter listeners only once
+    document.querySelectorAll(".filters input, .filters select")
+        .forEach(el => {
+            el.onchange = updateDashboard;
+        });
+
+    updateDashboard();
+}
+
+// ========================================
+// FILTER POPULATION
+// ========================================
+
+function populateFilters() {
+
+    const filters = [
+        ["region", "Region"],
+        ["channel", "Channel"],
+        ["service", "Service Type"],
+        ["customerType", "Customer Type"]
+    ];
+
+    filters.forEach(([id, key]) => {
+
+        const select = document.getElementById(id);
+
+        if (!select) return;
+
+        // Preserve the default option
+        select.innerHTML = '<option value="">All</option>';
+
+        unique(rawData, key).forEach(value => {
+
+            const option = document.createElement("option");
+
+            option.value = value;
+            option.textContent = value;
+
+            select.appendChild(option);
+        });
+    });
+}
+
+// ========================================
+// FILTERS
+// ========================================
+
+function updateDashboard() {
+
+    const startValue = document.getElementById("startDate").value;
+    const endValue = document.getElementById("endDate").value;
+
+    const start = startValue
+        ? new Date(startValue + "T00:00:00")
+        : null;
+
+    const end = endValue
+        ? new Date(endValue + "T23:59:59.999")
+        : null;
+
+    filteredData = rawData.filter(row => {
+
+        if (start && row.Date < start) return false;
+        if (end && row.Date > end) return false;
+
+        const checks = [
+            ["region", "Region"],
+            ["channel", "Channel"],
+            ["service", "Service Type"],
+            ["customerType", "Customer Type"]
+        ];
+
+        return checks.every(([id, key]) => {
+
+            const element = document.getElementById(id);
+
+            const value = element ? element.value : "";
+
+            return !value || row[key] === value;
+        });
+    });
+
+    renderAll();
+}
+
+// ========================================
+// NAVIGATION
+// ========================================
+
+function showPage(page, button) {
+
+    document.querySelectorAll(".page")
+        .forEach(p => p.classList.remove("active"));
+
+    document.querySelectorAll(".nav-btn")
+        .forEach(b => b.classList.remove("active"));
+
+    const target = document.getElementById(page);
+
+    if (target) target.classList.add("active");
+
+    if (button) button.classList.add("active");
+
+    const titles = {
+        overview: "Executive Overview",
+        revenue: "Revenue Analysis",
+        marketing: "Marketing Performance",
+        customer: "Customer Analysis",
+        service: "Service & Regional Analysis",
+        recommendations: "Business Recommendations",
+        tracking: "Action Tracking",
+        quality: "Data Quality"
+    };
+
+    const heading = document.getElementById("pageHeading");
+
+    if (heading) {
+        heading.textContent = titles[page] || page;
+    }
+
+    setTimeout(() => {
+
+        document.querySelectorAll(".chart").forEach(el => {
+
+            if (el.data) {
+                Plotly.Plots.resize(el);
+            }
+        });
+
+    }, 100);
+}
+
+// ========================================
+// KPI COMPONENT
+// ========================================
+
+function createKPI(label, value, note = "") {
+
+    return `
+        <div class="kpi">
+            <div class="kpi-label">${escapeHTML(label)}</div>
+            <div class="kpi-value">${escapeHTML(value)}</div>
+            <div class="kpi-note">${escapeHTML(note)}</div>
+        </div>
+    `;
+}
+
+function renderKPIs() {
+
+    const revenue = sum(filteredData, "Revenue");
+    const spend = sum(filteredData, "Ad Spend");
+    const conversions = sum(filteredData, "Conversions");
+
+    const kpis = [
+
+        createKPI(
+            "Total Revenue",
+            money(revenue),
+            "Filtered Revenue"
+        ),
+
+        createKPI(
+            "Advertising Spend",
+            money(spend),
+            "Total Ad Spend"
+        ),
+
+        createKPI(
+            "Conversions",
+            money(conversions),
+            "Total Conversions"
+        ),
+
+        createKPI(
+            "ROAS",
+            roas(filteredData).toFixed(2) + "x",
+            "Revenue / Ad Spend"
+        ),
+
+        createKPI(
+            "Average Revenue per Transaction",
+            money(avg(filteredData, "Revenue")),
+            "Average per row"
+        ),
+
+        createKPI(
+            "Transactions",
+            money(filteredData.length),
+            "Number of records"
+        )
+    ];
+
+    document.getElementById("kpiContainer").innerHTML =
+        kpis.join("");
+
+    document.getElementById("revenueKPIs").innerHTML = [
+
+        createKPI("Total Revenue", money(revenue)),
+
+        createKPI("Average Revenue", money(avg(filteredData, "Revenue"))),
+
+        createKPI("Transactions", money(filteredData.length))
+
+    ].join("");
+
+    document.getElementById("marketingKPIs").innerHTML = [
+
+        createKPI("Ad Spend", money(spend)),
+
+        createKPI("Conversions", money(conversions)),
+
+        createKPI("ROAS", roas(filteredData).toFixed(2) + "x")
+
+    ].join("");
+}
+
+// ========================================
+// CHART HELPERS
+// ========================================
+
+const chartLayout = {
+
+    paper_bgcolor: "transparent",
+    plot_bgcolor: "transparent",
+
+    font: {
+        color: "#91a1b9"
+    },
+
+    margin: {
+        t: 15,
+        l: 45,
+        r: 15,
+        b: 45
+    },
+
+    legend: {
+        orientation: "h"
+    },
+
+    autosize: true
+};
+
+function drawBar(id, labels, values, name = "Revenue") {
+
+    Plotly.react(id, [{
+
+        x: labels,
+        y: values,
+
+        type: "bar",
+        name,
+
+        marker: {
+            color: "#4f8cff"
+        }
+
+    }], chartLayout, {
+        responsive: true,
+        displayModeBar: false
+    });
+}
+
+function drawLine(id, labels, values, name = "Revenue") {
+
+    Plotly.react(id, [{
+
+        x: labels,
+        y: values,
+
+        type: "scatter",
+        mode: "lines+markers",
+        name,
+
+        line: {
+            color: "#20c997",
+            width: 3
+        }
+
+    }], chartLayout, {
+        responsive: true,
+        displayModeBar: false
+    });
+}
+
+function drawPie(id, labels, values) {
+
+    Plotly.react(id, [{
+
+        labels,
+        values,
+
+        type: "pie",
+        hole: 0.55,
+
+        textinfo: "label+percent"
+
+    }], {
+
+        ...chartLayout,
+        showlegend: true
+
+    }, {
+        responsive: true,
+        displayModeBar: false
+    });
+}
+
+function drawEmptyChart(id, message = "No Data Available") {
+
+    Plotly.react(id, [], {
+
+        ...chartLayout,
+
+        xaxis: { visible: false },
+        yaxis: { visible: false },
+
+        annotations: [{
+
+            text: message,
+            showarrow: false,
+
+            font: {
+                color: "#91a1b9",
+                size: 14
+            }
+
+        }]
+
+    }, {
+        responsive: true,
+        displayModeBar: false
+    });
+}
+
+// ========================================
+// MONTHLY ANALYSIS
+// ========================================
+
+function monthlyData() {
+
+    const groups = {};
+
+    filteredData.forEach(row => {
+
+        const key = row.Date.getFullYear() + "-" +
+            String(row.Date.getMonth() + 1).padStart(2, "0");
+
+        if (!groups[key]) {
+
+            groups[key] = {
+                Revenue: 0,
+                Spend: 0,
+                Conversions: 0
+            };
+        }
+
+        groups[key].Revenue += row.Revenue;
+        groups[key].Spend += row["Ad Spend"];
+        groups[key].Conversions += row.Conversions;
+    });
+
+    return groups;
+}
+
+// ========================================
+// OVERVIEW
+// ========================================
+
+function renderOverview() {
+
+    if (!filteredData.length) {
+
+        [
+            "overviewRevenue",
+            "overviewChannel",
+            "overviewService",
+            "overviewCustomer"
+        ].forEach(id => drawEmptyChart(id));
+
+        return;
+    }
+
+    const monthly = monthlyData();
+    const months = Object.keys(monthly).sort();
+
+    drawLine(
+        "overviewRevenue",
+        months,
+        months.map(m => monthly[m].Revenue)
+    );
+
+    const channel = groupSum(
+        filteredData,
+        "Channel",
+        "Revenue"
+    );
+
+    drawPie(
+        "overviewChannel",
+        Object.keys(channel),
+        Object.values(channel)
+    );
+
+    const service = groupSum(
+        filteredData,
+        "Service Type",
+        "Revenue"
+    );
+
+    drawBar(
+        "overviewService",
+        Object.keys(service),
+        Object.values(service)
+    );
+
+    const customers = groupSum(
+        filteredData,
+        "Customer Type",
+        "Revenue"
+    );
+
+    drawPie(
+        "overviewCustomer",
+        Object.keys(customers),
+        Object.values(customers)
+    );
+}
+
+// ========================================
+// REVENUE ANALYSIS
+// ========================================
+
+function renderRevenue() {
+
+    if (!filteredData.length) {
+
+        [
+            "monthlyRevenue",
+            "regionRevenue",
+            "customerRevenue",
+            "serviceRevenue"
+        ].forEach(id => drawEmptyChart(id));
+
+        return;
+    }
+
+    const monthly = monthlyData();
+    const months = Object.keys(monthly).sort();
+
+    drawLine(
+        "monthlyRevenue",
+        months,
+        months.map(m => monthly[m].Revenue)
+    );
+
+    const region = groupSum(
+        filteredData,
+        "Region",
+        "Revenue"
+    );
+
+    drawBar(
+        "regionRevenue",
+        Object.keys(region),
+        Object.values(region)
+    );
+
+    const customer = groupSum(
+        filteredData,
+        "Customer Type",
+        "Revenue"
+    );
+
+    drawPie(
+        "customerRevenue",
+        Object.keys(customer),
+        Object.values(customer)
+    );
+
+    const service = groupSum(
+        filteredData,
+        "Service Type",
+        "Revenue"
+    );
+
+    drawBar(
+        "serviceRevenue",
+        Object.keys(service),
+        Object.values(service)
+    );
+}
+
+// ========================================
+// MARKETING PERFORMANCE
+// ========================================
+
+function renderMarketing() {
+
+    if (!filteredData.length) {
+
+        [
+            "channelROAS",
+            "channelSpend",
+            "channelConversions",
+            "revenueSpend"
+        ].forEach(id => drawEmptyChart(id));
+
+        return;
+    }
+
+    const channels = groupRows(filteredData, "Channel");
+
+    const names = Object.keys(channels);
+
+    const roasValues = names.map(name =>
+        roas(channels[name])
+    );
+
+    drawBar(
+        "channelROAS",
+        names,
+        roasValues,
+        "ROAS"
+    );
+
+    const spend = groupSum(
+        filteredData,
+        "Channel",
+        "Ad Spend"
+    );
+
+    drawBar(
+        "channelSpend",
+        Object.keys(spend),
+        Object.values(spend),
+        "Ad Spend"
+    );
+
+    const conversions = groupSum(
+        filteredData,
+        "Channel",
+        "Conversions"
+    );
+
+    drawBar(
+        "channelConversions",
+        Object.keys(conversions),
+        Object.values(conversions),
+        "Conversions"
+    );
+
+    const revenue = groupSum(
+        filteredData,
+        "Channel",
+        "Revenue"
+    );
+
+    Plotly.react("revenueSpend", [
+
+        {
+            x: Object.keys(revenue),
+            y: Object.values(revenue),
+            name: "Revenue",
+            type: "bar"
+        },
+
+        {
+            x: Object.keys(spend),
+            y: Object.values(spend),
+            name: "Ad Spend",
+            type: "bar"
+        }
+
+    ], {
+
+        ...chartLayout,
+        barmode: "group"
+
+    }, {
+        responsive: true,
+        displayModeBar: false
+    });
+}
+
+// ========================================
+// CUSTOMER ANALYSIS
+// ========================================
+
+function renderCustomer() {
+
+    if (!filteredData.length) {
+
+        drawEmptyChart("customerContribution");
+        drawEmptyChart("customerConversions");
+
+        document.getElementById("customerTable").innerHTML =
+            "<p>No Data Available</p>";
+
+        return;
+    }
+
+    const groups = groupRows(
+        filteredData,
+        "Customer Type"
+    );
+
+    const names = Object.keys(groups);
+
+    const revenue = names.map(name =>
+        sum(groups[name], "Revenue")
+    );
+
+    drawPie(
+        "customerContribution",
+        names,
+        revenue
+    );
+
+    const conversions = names.map(name =>
+        sum(groups[name], "Conversions")
+    );
+
+    drawBar(
+        "customerConversions",
+        names,
+        conversions,
+        "Conversions"
+    );
+
+    let html = `
+        <table>
+            <tr>
+                <th>Customer Type</th>
+                <th>Revenue</th>
+                <th>Ad Spend</th>
+                <th>Conversions</th>
+                <th>ROAS</th>
+            </tr>
+    `;
+
+    names.forEach(name => {
+
+        const rows = groups[name];
+
+        html += `
+            <tr>
+                <td>${escapeHTML(name)}</td>
+                <td>${money(sum(rows, "Revenue"))}</td>
+                <td>${money(sum(rows, "Ad Spend"))}</td>
+                <td>${money(sum(rows, "Conversions"))}</td>
+                <td>${roas(rows).toFixed(2)}x</td>
+            </tr>
+        `;
+    });
+
+    html += "</table>";
+
+    document.getElementById("customerTable").innerHTML = html;
+}
+
+// ========================================
+// SERVICE & REGIONAL ANALYSIS
+// ========================================
+
+function renderService() {
+
+    if (!filteredData.length) {
+
+        [
+            "servicePerformance",
+            "regionalPerformance",
+            "serviceContribution",
+            "serviceChannel"
+        ].forEach(id => drawEmptyChart(id));
+
+        return;
+    }
+
+    const service = groupSum(
+        filteredData,
+        "Service Type",
+        "Revenue"
+    );
+
+    const region = groupSum(
+        filteredData,
+        "Region",
+        "Revenue"
+    );
+
+    drawBar(
+        "servicePerformance",
+        Object.keys(service),
+        Object.values(service)
+    );
+
+    drawBar(
+        "regionalPerformance",
+        Object.keys(region),
+        Object.values(region)
+    );
+
+    drawPie(
+        "serviceContribution",
+        Object.keys(service),
+        Object.values(service)
+    );
+
+    const matrix = groupRows(
+        filteredData,
+        "Service Type"
+    );
+
+    const services = Object.keys(matrix);
+
+    const channels = unique(
+        filteredData,
+        "Channel"
+    );
+
+    const traces = channels.map(channel => {
+
+        const values = services.map(service => {
+
+            return sum(
+                matrix[service].filter(r =>
+                    r.Channel === channel
+                ),
+                "Revenue"
+            );
+        });
+
+        return {
+            x: services,
+            y: values,
+            name: channel,
+            type: "bar"
+        };
+    });
+
+    Plotly.react(
+        "serviceChannel",
+        traces,
+        {
+            ...chartLayout,
+            barmode: "group"
+        },
+        {
+            responsive: true,
+            displayModeBar: false
+        }
+    );
+}
+
+// ========================================
+// RULE-BASED RECOMMENDATION ENGINE
+// ========================================
+
+function generateRecommendations() {
+
+    const list = [];
+
+    if (!filteredData.length) {
+
+        return [{
+            title: "No Data Available",
+            description: "Adjust your filters to view recommendations."
+        }];
+    }
+
+    // Channel performance
+    const channels = groupRows(
+        filteredData,
+        "Channel"
+    );
+
+    const channelStats = Object.keys(channels).map(name => ({
+
+        name,
+
+        revenue: sum(channels[name], "Revenue"),
+
+        spend: sum(channels[name], "Ad Spend"),
+
+        roas: roas(channels[name])
+
+    }));
+
+    const eligibleChannels = channelStats.filter(c => c.spend > 0);
+
+    const bestChannel = [...eligibleChannels]
+        .sort((a, b) => b.roas - a.roas)[0];
+
+    const worstChannel = [...eligibleChannels]
+        .sort((a, b) => a.roas - b.roas)[0];
+
+    if (bestChannel) {
+
+        list.push({
+
+            title: "Optimize High-Performing Channel",
+
+            description:
+                `${bestChannel.name} has the highest ROAS (${bestChannel.roas.toFixed(2)}x). Consider testing additional budget allocation while monitoring marginal returns.`
+
+        });
+    }
+
+    if (worstChannel && eligibleChannels.length > 1) {
+
+        list.push({
+
+            title: "Review Low-Performing Channel",
+
+            description:
+                `${worstChannel.name} has the lowest ROAS (${worstChannel.roas.toFixed(2)}x). Review campaign targeting, spend efficiency and conversion quality before increasing its budget.`
+
+        });
+    }
+
+    // Service performance
+    const services = groupSum(
+        filteredData,
+        "Service Type",
+        "Revenue"
+    );
+
+    const bestService = Object.entries(services)
+        .sort((a, b) => b[1] - a[1])[0];
+
+    if (bestService) {
+
+        list.push({
+
+            title: "Focus on Top Revenue Service",
+
+            description:
+                `${bestService[0]} generates the highest revenue. Investigate opportunities to expand this service and maintain quality.`
+
+        });
+    }
+
+    // Customer analysis
+    const customers = groupSum(
+        filteredData,
+        "Customer Type",
+        "Revenue"
+    );
+
+    const totalRevenue = sum(
+        filteredData,
+        "Revenue"
+    );
+
+    const returningShare = totalRevenue
+        ? (customers["Returning"] || 0) / totalRevenue * 100
+        : 0;
+
+    if (customers["New"] !== undefined) {
+
+        list.push({
+
+            title: "Improve Customer Retention",
+
+            description:
+                `Returning customers contribute ${returningShare.toFixed(1)}% of total revenue. Consider loyalty campaigns and targeted retention initiatives. This is revenue contribution, not a measured retention rate.`
+
+        });
+    }
+
+    // Advertising data
+    const totalSpend = sum(
+        filteredData,
+        "Ad Spend"
+    );
+
+    if (totalSpend === 0) {
+
+        list.push({
+
+            title: "Review Advertising Data",
+
+            description:
+                "No advertising spend is recorded in the current filtered dataset. ROAS cannot be meaningfully evaluated."
+
+        });
+    }
+
+    return list;
+}
+
+// ========================================
+// RENDER RECOMMENDATIONS
+// ========================================
+
+function renderRecommendations() {
+
+    const recommendations = generateRecommendations();
+
+    document.getElementById("recommendationList").innerHTML =
+
+        recommendations.map((r, i) => `
+
+            <div class="recommendation">
+
+                <strong>
+                    ${i + 1}. ${escapeHTML(r.title)}
+                </strong>
+
+                <p>${escapeHTML(r.description)}</p>
+
+            </div>
+
+        `).join("");
+
+    updateActionList(recommendations);
+}
+
+// ========================================
+// ACTION TRACKING
+// ========================================
+
+function updateActionList(recommendations) {
+
+    // Add new recommendations only once.
+    // Existing action statuses are preserved.
+
+    recommendations.forEach(r => {
+
+        const existing = actions.find(a =>
+            a.title === r.title
+        );
+
+        if (!existing) {
+
+            actions.push({
+
+                title: r.title,
+
+                description: r.description,
+
+                status: "Pending"
+
+            });
+
+        } else {
+
+            // Update description without changing status
+            existing.description = r.description;
+        }
+    });
+
+    saveActions();
+
+    renderActions();
+}
+
+function saveActions() {
+
+    try {
+
+        localStorage.setItem(
+            "bi_actions",
+            JSON.stringify(actions)
+        );
+
+    } catch (error) {
+
+        console.error("Could not save actions:", error);
+    }
+}
+
+function renderActions() {
+
+    let html = `
+
+        <table>
+
+            <tr>
+                <th>Recommendation</th>
+                <th>Status</th>
+            </tr>
+
+    `;
+
+    actions.forEach((action, index) => {
+
+        html += `
+
+            <tr>
+
+                <td>
+
+                    <strong>
+                        ${escapeHTML(action.title)}
+                    </strong>
+
+                    <div class="small">
+                        ${escapeHTML(action.description)}
+                    </div>
+
+                </td>
+
+                <td>
+
+                    <select
+                        class="status-select"
+                        onchange="changeAction(${index}, this.value)"
+                    >
+
+                        ${["Pending", "In Progress", "Completed", "On Hold"]
+
+                            .map(status => `
+
+                                <option
+                                    value="${status}"
+                                    ${action.status === status ? "selected" : ""}
+                                >
+
+                                    ${status}
+
+                                </option>
+
+                            `).join("")}
+
+                    </select>
+
+                </td>
+
+            </tr>
+
+        `;
+    });
+
+    html += "</table>";
+
+    document.getElementById("actionTable").innerHTML = html;
+}
+
+function changeAction(index, status) {
+
+    if (!actions[index]) return;
+
+    actions[index].status = status;
+
+    saveActions();
+
+    renderActions();
+}
+
+// ========================================
+// EXPORT ACTIONS
+// ========================================
+
+function exportActions() {
+
+    if (!actions.length) {
+        alert("No actions available to export.");
+        return;
+    }
+
+    const csv = Papa.unparse(actions);
+
+    downloadCSV(
+        csv,
+        "action_tracking.csv"
+    );
+}
+
+// ========================================
+// DATA QUALITY
+// ========================================
+
+function renderQuality() {
+
+    const columns = [
+
+        "Date",
+        "Revenue",
+        "Ad Spend",
+        "Conversions",
+        "Service Type",
+        "Customer Type",
+        "Channel",
+        "Region"
+
+    ];
+
+    const numericColumns = [
+        "Revenue",
+        "Ad Spend",
+        "Conversions"
+    ];
+
+    const missing = {};
+    const numericInvalid = {};
+
+    // Check original CSV values, not normalized values
+    columns.forEach(col => {
+
+        missing[col] = qualityData.filter(row => {
+
+            const value = row[col];
+
+            return value == null || String(value).trim() === "";
+
+        }).length;
+    });
+
+    numericColumns.forEach(col => {
+
+        numericInvalid[col] = qualityData.filter(row => {
+
+            const value = String(row[col] ?? "")
+                .replace(/,/g, "")
+                .trim();
+
+            return value !== "" && !Number.isFinite(Number(value));
+
+        }).length;
+    });
+
+    // Exact duplicate detection on original CSV rows
+    const duplicateCount = qualityData.length -
+        new Set(
+            qualityData.map(row => JSON.stringify(row))
+        ).size;
+
+    const negativeRevenue = rawData.filter(
+        row => row.Revenue < 0
+    ).length;
+
+    const negativeSpend = rawData.filter(
+        row => row["Ad Spend"] < 0
+    ).length;
+
+    const negativeConversions = rawData.filter(
+        row => row.Conversions < 0
+    ).length;
+
+    const invalidDates = qualityData.filter(row =>
+        !parseDate(row.Date)
+    ).length;
+
+    const totalMissing = Object.values(missing)
+        .reduce((a, b) => a + b, 0);
+
+    document.getElementById("qualityKPIs").innerHTML = [
+
+        createKPI(
+            "Total Records",
+            money(qualityData.length)
+        ),
+
+        createKPI(
+            "Missing Cells",
+            money(totalMissing)
+        ),
+
+        createKPI(
+            "Duplicate Rows",
+            money(duplicateCount)
+        ),
+
+        createKPI(
+            "Negative Revenue",
+            money(negativeRevenue)
+        )
+
+    ].join("");
+
+    let html = `
+
+        <table>
+
+            <tr>
+                <th>Column</th>
+                <th>Missing Values</th>
+                <th>Invalid Numeric Values</th>
+            </tr>
+
+    `;
+
+    columns.forEach(col => {
+
+        html += `
+
+            <tr>
+
+                <td>${escapeHTML(col)}</td>
+
+                <td>${money(missing[col])}</td>
+
+                <td>${money(numericInvalid[col] || 0)}</td>
+
+            </tr>
+
+        `;
+    });
+
+    html += `
+
+        </table>
+
+        <p class="small">
+
+            Invalid Dates: ${money(invalidDates)} |
+
+            Negative Ad Spend: ${money(negativeSpend)} |
+
+            Negative Conversions: ${money(negativeConversions)}
+
+        </p>
+
+        <p class="small">
+
+            Note: Duplicate detection uses exact row matches.
+            A duplicate row is not automatically an error.
+
+        </p>
+
+    `;
+
+    document.getElementById("qualityTable").innerHTML = html;
+}
+
+// ========================================
+// CSV DOWNLOAD
+// ========================================
+
+function downloadCSV(csv, filename) {
+
+    const blob = new Blob(
+        ["\ufeff" + csv],
+        {
+            type: "text/csv;charset=utf-8;"
+        }
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = filename;
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+    URL.revokeObjectURL(url);
+}
+
+// ========================================
+// RENDER ALL DASHBOARD SECTIONS
+// ========================================
+
+function renderAll() {
+
+    if (!rawData.length) return;
+
+    renderKPIs();
+
+    renderOverview();
+
+    renderRevenue();
+
+    renderMarketing();
+
+    renderCustomer();
+
+    renderService();
+
+    renderRecommendations();
+
+    renderQuality();
+}
+
+</script>
+
+</body>
+</html>
