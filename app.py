@@ -22,8 +22,8 @@ st.set_page_config(
 
 BASE_DIR = Path(__file__).parent
 
-DATA_DIR = BASE_DIR / "data"
-OUTPUT_DIR = BASE_DIR / "outputs"
+DATA_DIR = BASE_DIR / "Data"
+OUTPUT_DIR = BASE_DIR / "Outputs"
 
 DATA_PATH = DATA_DIR / "dataset.csv"
 
